@@ -25,7 +25,7 @@ class UrlManager:
     base_url = 'https://compass-ssb.tamu.edu'
     login_url = 'https://compass-sso.tamu.edu:443/ssomanager/c/SSB?pkg=bwykfcls.p_sel_crse_search'
     referer_url = 'https://cas.tamu.edu/cas/login?service=https%3A%2F%2Fcompass-sso.tamu.edu%3A443%2Fssomanager%2Fc%2FSSB%3Bjsessionid%3DrnCyUwU8GZI6Z4N_I-f6g5B6wx65qnJgrtMABFKdE-uyZdwN4E52%21-280416030%3Fpkg%3Dbwykfcls.p_sel_crse_search'
-
-
+    course_url = 'https://compass-ssb.tamu.edu/pls/PROD/bwykfcls.P_GetCrse?deviceType=C'
+    term_url = 'https://compass-ssb.tamu.edu/pls/PROD/bwykfcls.p_sel_crse_search'
 url_manager = UrlManager()
 session = ConnectionManager()   # global session used by other classes

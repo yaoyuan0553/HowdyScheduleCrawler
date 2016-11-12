@@ -30,6 +30,9 @@
     <Compile Include="script.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ThreadTest.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
