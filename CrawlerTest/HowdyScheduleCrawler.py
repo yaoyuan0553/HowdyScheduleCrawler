@@ -8,6 +8,7 @@ import threading
 import getpass
 import random
 import os
+import tabulate
 from bs4 import BeautifulSoup
 from enum import Enum
 
@@ -121,13 +122,20 @@ class HowdyCompassConnector:
 
 howdy_connector = HowdyCompassConnector()
 
-class Course:
+class Course(object):
     def __init__(self, subj_name, course_id, section_id, semester_id, crn):
         self.semester_id = semester_id
         self.subj_name = subj_name
         self.course_id = course_id
         self.section_id = section_id
         self.crn = crn
+
+    def __eq__(self, other):
+        return self.semester_id == other.semester_id and \
+            self.subj_name == other.subj_name and \
+            self.course_id == other.course_id and \
+            self.section_id == other.section_id and \
+            self.crn == other.crn
 
     def __repr__(self):
         return "Course('{}', '{}', '{}', '{}', '{}')".format(
@@ -203,10 +211,11 @@ class CourseRegister(object):
         error_span = register_page_soup.find('span', class_='errortext')
         if error_span is not None:
             print "** Registration Failed **"
-            print "The following is the failed reason\n"
-            cls.__errormsg = register_page_soup.find(
+            #print "The following is the failed reason\n"
+            error_table = register_page_soup.find(
                 'table', {'class':'datadisplaytable', 'summary':'This layout table is used to present Registration Errors.'})
-            print cls.__errormsg
+            cls.__errormsg = tabulate_html_table(error_table)
+            #print cls.__errormsg
             return False
         return True
 
@@ -241,6 +250,7 @@ class CourseWatcher:
 
     def __init__(self):
         self.courseList = dict()
+        self.force_register = False
 
     def printStatuslist(self):
         pass
@@ -258,6 +268,10 @@ class CourseWatcher:
             if (self.courseList.has_key(course)): continue
             section_page = howdy_connector.direct_section_page(course)
             self.courseList[course] = [section_page, CourseWatchStatus(course)]
+
+    def refresh_page(self, course):
+        section_page = howdy_connector.direct_course_page(course)
+        self.courseList[course][0] = section_page
             
     @staticmethod
     def notify(course_name):
@@ -271,7 +285,54 @@ class CourseWatcher:
     def ask_for_registration():
         pass
 
-    def startWatch(self, time_interval=10, auto_register=False):
+    def find_course(self, course, schedule_table):
+        '''
+        find the course in schedule_table
+        @course: Course
+        @schedule_table: BeautifulSoup
+
+        return_type: BeatifulSoup or None
+        returns the row of where the course is located
+        '''
+        schedule_header = [tr for tr in table.find_all('tr') if tr.find('th') is not None]
+        schedule_content = [tr for tr in table.find_all('tr') if tr.find('th') is None]
+        # check if website is altered
+        if schedule_header[1].get_text().strip(' ') != ScheduleMacroContainer.default_schedule_header_text:
+            print "Howdy schedule website updated, please contact Yuan Yao at yaoyuan0553@yahoo.com for an update"
+            print "Bye~~"
+            sys.exit()
+        # looking for the provided course on webpage
+        for tr in schedule_content:
+            td_list = tr.find_all('td')
+            select = td_list[ScheduleMacroContainer.coln_index_dict['Select']]
+            crn = td_list[ScheduleMacroContainer.coln_index_dict['CRN']]
+            subj = td_list[ScheduleMacroContainer.coln_index_dict['Subj']]
+            crse = td_list[ScheduleMacroContainer.coln_index_dict['Crse']]
+            sec = td_list[ScheduleMacroContainer.coln_index_dict['Sec']]
+            
+            c = Course(subj, crn, sec, course.semester_id, crn)
+            if course == c:
+                return tr
+        return None
+
+    def validate_availability(self, tr_row):
+        '''
+        only valid when both the checkbox exists and the remining seats > 0
+        @tr_row: BeautifulSoup
+        return_type: boolean
+        True if valid, False otherwise
+        '''
+        td_list = tr_row.find_all('td')
+        select = td_list[ScheduleMacroContainer.coln_index_dict['Select']]
+        cap = int(td_list[ScheduleMacroContainer.coln_index_dict['Cap']])
+        rem = int(td_list[ScheduleMacroContainer.coln_index_dict['Rem']])
+
+        checkbox = select.find('input', {'type': 'checkbox'})
+
+        return checkbox is not None and rem > 0
+
+
+    def startWatch(self, course, time_interval=10, auto_register=True):
         '''
         @time_interval: int
             time in minutes to wait in between each refresh
@@ -279,25 +340,47 @@ class CourseWatcher:
             automatically register if course is open when value is True.
             Default to False 
         '''
-        for course in self.courseList:
+        if not self.courseList.has_key(course):
+            print "** Course must be loaded by 'placeWatchOn()' first! **"
+            return
+        
+        while (self.courseList[course][1].status != StatusCode.registered):
+            self.refresh_page(course)   # refresh the page
+
             page, _ = self.courseList[course]
             soup = BeautifulSoup(page.text, 'html5lib')
             table = soup.find('table', class_='datadisplaytable')
-            for tr in table.find_all('tr'):
-                if tr.has_attr('style'):
-                    select_tdtag = tr.find_all('td')[0]
-                    checkbox = soup.find('input', {'type':'checkbox'})
-                    if checkbox is not None:
-                        self.courseList[course][1].status = StatusCode.open
-                        self.notify(str(course))   
-                        if auto_register is True:   # attempt to register automatically
-                            if CourseRegister.register(course) is False:    # registration failed
-                                CourseRegister.get_error_message()
-                                self.courseList[course][1].status = StatusCode.registration_error
-                            else:   # registration successful
-                                self.courseList[course][1].status = StatusCode.registered
-                        else:   # ask user whether they want the course to be registered
-                            pass
+            tr_row = self.find_course(course, table)
+            if (tr_row is None):
+                print "** Course not found! **"
+                print "** Terminating watcher on course %s **" % (course)
+                return
+
+            if self.validate_availability(tr_row) is True:
+                self.courseList[course][1].status = StatusCode.open
+                self.notify(str(course))
+            if self.courseList[course][1].status == StatusCode.open or self.force_register is True:
+                if auto_register is True:   # attemp to register automatically
+                    print '\nRegistering...'
+                    if CourseRegister.register(course) is False:    # registration failed
+                        CourseRegister.get_error_message()
+                        self.courseList[course][1].status = StatusCode.registration_error
+                    else:
+                        self.courseList[course][1].status = StatusCode.registered
+                else:
+                    resp = raw_input('Register %s? (y/n)' % (course))
+                    while resp != 'y' and resp != 'n':
+                        resp = raw_input('Register %s? (y/n)' % (course))
+                    if resp == 'y':
+                        print '\nRegistering...'
+                        if CourseRegister.register(course) is False:    # registration failed
+                            CourseRegister.get_error_message()
+                            self.courseList[course][1].status = StatusCode.registration_error
+                        else:
+                            self.courseList[course][1].status = StatusCode.registered
+
+            time.sleep(time_interval)   # wait in between trials
+        print "Registration of %s successful!" % (course)
                         
 def is_number(s):
     try:
@@ -305,6 +388,21 @@ def is_number(s):
         return True
     except ValueError:
         return False
+
+def tabulate_html_table(table_soup):
+    '''
+    Returns a tabulate object printable
+    in console
+    @table_soup: BeautifulSoup
+    '''
+    header = []
+    table = []
+    for h in table_soup.find_all('th'):
+        header.append(h.get_text())
+    for tr in table_soup.find_all('tr')[1:]:
+        table.append([td.get_text() for td in tr.find_all('td')])
+
+    return tabulate.tabulate(table, header, tablefmt='simple')
 
 def displayInfo():
     print "**************************************"
@@ -336,16 +434,16 @@ def main():
     print "Please provide with correct info of the course. (Term is default to Spring 2017)"
     is_correct = False
     while (is_correct is False):
-        c_name = raw_input('Course Name (i.e. CSCE): ')
+        c_name = raw_input('Subject Name (i.e. CSCE): ')
         c_num = raw_input('Course Number (i.e 489): ')
         c_sec = raw_input('Course Section (i.e 501): ')
         crn = raw_input('Course CRN (i.e. 12452): ')
 
         print "\n%s %s-%s\nCRN: %s" % (c_name, c_num, c_sec, crn)
         
-        c = raw_input('Please confirm if the above information are correct? (y/n) ')
+        c = raw_input('Please confirm if the above information is correct? (y/n) ')
         while (c != 'y' and c != 'n'):
-            c = raw_input('Please confirm if the above information are correct? (y/n) ')
+            c = raw_input('Please confirm if the above information is correct? (y/n) ')
 
         is_correct = c == 'y'
     
@@ -394,5 +492,19 @@ def main():
 
 
 
+def test():
+    register_page = open(r'C:/Users/yaoyu/Desktop/Add or Drop Classes.html', 'r')
+    register_page_soup = BeautifulSoup(register_page, 'html5lib')
+    error_span = register_page_soup.find('span', class_='errortext')
+    #tabulate.
+    if error_span is not None:
+        print "** Registration Failed **"
+        #print "The following is the failed reason\n"
+        error_table = register_page_soup.find(
+            'table', {'class':'datadisplaytable', 'summary':'This layout table is used to present Registration Errors.'})
+
+        errmsg = tabulate_html_table(error_table)
+        print errmsg
+
 if __name__ == "__main__":
-    main()
+    test()
