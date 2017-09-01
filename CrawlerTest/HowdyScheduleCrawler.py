@@ -64,10 +64,10 @@ class HowdyCompassConnector:
         
         self.csrftoken = login_page.cookies['csrftoken']
         soup = BeautifulSoup(login_page.text, 'html.parser')
-        tag = soup.find('input', {'name':'lt'})
-        lt_value = tag.attrs['value']
+        #tag = soup.find('input', {'name':'lt'})
+        #lt_value = tag.attrs['value']
         payload = dict(csrfmiddlewaretoken=self.csrftoken, username=username, 
-                       password=password, lt=lt_value, _eventId='submit')
+                       password=password, _eventId='submit')
         self.term_page = session.post(login_page.url, headers={'Referer': urls.referer_url}, data=payload)
         if (urls.term_url != self.term_page.url):
             print "Login failed. Incorrect login credentials"
@@ -506,5 +506,5 @@ def test():
         errmsg = tabulate_html_table(error_table)
         print errmsg
 
-if __name__ == "__main__":
-    test()
+#if __name__ == "__main__":
+#    test()
