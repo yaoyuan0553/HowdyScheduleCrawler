@@ -64,10 +64,8 @@ class HowdyCompassConnector:
         
         self.csrftoken = login_page.cookies['csrftoken']
         soup = BeautifulSoup(login_page.text, 'html.parser')
-        tag = soup.find('input', {'name':'lt'})
-        lt_value = tag.attrs['value']
         payload = dict(csrfmiddlewaretoken=self.csrftoken, username=username, 
-                       password=password, lt=lt_value, _eventId='submit')
+                       password=password, _eventId='submit')
         self.term_page = session.post(login_page.url, headers={'Referer': urls.referer_url}, data=payload)
         if (urls.term_url != self.term_page.url):
             print "Login failed. Incorrect login credentials"
@@ -75,8 +73,8 @@ class HowdyCompassConnector:
         print 'Login successful\n'
         ## get url of subj selection page
         urls.subj_url = urls.base_url
-        term_page_soup = BeautifulSoup(self.term_page.text, 'html.parser')
-        for tag in term_page_soup.findAll('form'):
+        self.term_page_soup = BeautifulSoup(self.term_page.text, 'html.parser')
+        for tag in self.term_page_soup.findAll('form'):
             r = tag.get('onsubmit')
             if r != None:
                 urls.subj_url += tag.get('action')
@@ -174,8 +172,8 @@ class Course(object):
             'SUB_BTN':'View Sections'
         }
     def get_register_form(self):
-        return dict(TERM_IN=self.semester_id, sel_crn=['dummy', self.crn + ' ' + self.semester_id], 
-                    assoc_term_in=['dummy', self.semester_id], ADD_BTN=['dummy', 'Register'])
+        return dict(TERM_IN=self.semester_id, rsts='dummy', sel_crn=['dummy', self.crn + ' ' + self.semester_id], crn='dummy',
+                    assoc_term_in=self.semester_id, ADD_BTN=['dummy', 'Register'])
 
 class CourseInfoExtractor:
     course_url = 'https://compass-ssb.tamu.edu/pls/PROD/bwykgens.p_proc_term_date?deviceType=C'
@@ -411,6 +409,24 @@ def displayInfo():
     print "**************************************\n"
     print "Please input your howdy login info\n"
 
+def selectTerm():
+    print "Available terms are:"
+
+    term_options = []
+    for i, option in enumerate(howdy_connector.term_page_soup.find('select', {'id': 'term_input_id'}).findChildren()):
+        if "(View only)" not in option.text:
+            print "{}. {}".format(i, option.text)
+            term_options.append(option)
+    selected_term = None
+    while True:
+        try:
+            term_no = int(raw_input("Please select term by number: "))
+            selected_term = term_options[term_no]['value']
+        except IndexError:
+            print "Invalid option!"
+            continue
+        break
+    return selected_term
 
 def main():
     displayInfo()
@@ -427,10 +443,10 @@ def main():
         is_success = howdy_connector.login(username, password)
         chances -= 1
 
-    #course_register = CourseRegister()
+    # display and select available semesters
+    term = selectTerm()
 
     # obtain course info 
-    term = '201711'
     print "Please provide with correct info of the course. (Term is default to Spring 2017)"
     is_correct = False
     while (is_correct is False):
@@ -478,17 +494,19 @@ def main():
     course = Course(c_name, c_num, c_sec, term, crn)
 
     # registering the course
-    is_registered = False
-    while (is_registered is False):
-        is_registered = CourseRegister.register(course)
-        wait_time = random.randint(sec_lower, sec_upper)
-        if (is_registered == False):
-            print "Retry in %d seconds" % (wait_time)
-            time.sleep(wait_time)
+    #CourseRegister.register(course)
 
-    print "\n\n******** Registration successful! *********"
+    #is_registered = False
+    #while (is_registered is False):
+    #    is_registered = CourseRegister.register(course)
+    #    wait_time = random.randint(sec_lower, sec_upper)
+    #    if (is_registered == False):
+    #        print "Retry in %d seconds" % (wait_time)
+    #        time.sleep(wait_time)
 
-    os.system('pause')
+    #print "\n\n******** Registration successful! *********"
+
+    #os.system('pause')
 
 
 
@@ -507,4 +525,4 @@ def test():
         print errmsg
 
 if __name__ == "__main__":
-    test()
+    main()
