@@ -35,5 +35,5 @@ class ScheduleMacroContainer:
     ''' 
     strip space before use 
     '''
-    default_schedule_header_text  = u'Select CRN Subj Crse Sec Cmp Cred Title Days Time Cap Act Rem Instructor  Click name to see CV Date (MM/DD) Location Attribute' 
+    default_schedule_header_text  = u'\nSelect\nCRN\nSubj\nCrse\nSec\nCmp\nCred\nTitle\nDays\nTime\nCap\nAct\nRem\nInstructor \n                      Click name to see CV\nDate (MM/DD)\nLocation\nAttribute\n'
     coln_index_dict = {u'Cap': 10, u'Crse': 3, u'Instructor  Click name to see CV': 13, u'CRN': 1, u'Title': 7, u'Days': 8, u'Attribute': 16, u'Cred': 6, u'Sec': 4, u'Location': 15, u'Act': 11, u'Time': 9, u'Rem': 12, u'Date (MM/DD)': 14, u'Subj': 2, u'Select': 0, u'Cmp': 5}
