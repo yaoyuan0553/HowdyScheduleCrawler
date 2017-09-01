@@ -111,6 +111,8 @@ class HowdyCompassConnector:
 
     def direct_section_page(self, course):
         '''
+        returns section page
+        expose section_page_soup to user
         @course: Course
         '''
         cf = course.get_course_form()
@@ -268,7 +270,7 @@ class CourseWatcher:
             self.courseList[course] = [section_page, CourseWatchStatus(course)]
 
     def refresh_page(self, course):
-        section_page = howdy_connector.direct_course_page(course)
+        section_page = howdy_connector.direct_section_page(course)
         self.courseList[course][0] = section_page
             
     @staticmethod
@@ -292,8 +294,8 @@ class CourseWatcher:
         return_type: BeatifulSoup or None
         returns the row of where the course is located
         '''
-        schedule_header = [tr for tr in table.find_all('tr') if tr.find('th') is not None]
-        schedule_content = [tr for tr in table.find_all('tr') if tr.find('th') is None]
+        schedule_header = [tr for tr in schedule_table.find_all('tr') if tr.find('th') is not None]
+        schedule_content = [tr for tr in schedule_table.find_all('tr') if tr.find('th') is None]
         # check if website is altered
         if schedule_header[1].get_text().strip(' ') != ScheduleMacroContainer.default_schedule_header_text:
             print "Howdy schedule website updated, please contact Yuan Yao at yaoyuan0553@yahoo.com for an update"
@@ -308,7 +310,7 @@ class CourseWatcher:
             crse = td_list[ScheduleMacroContainer.coln_index_dict['Crse']]
             sec = td_list[ScheduleMacroContainer.coln_index_dict['Sec']]
             
-            c = Course(subj, crn, sec, course.semester_id, crn)
+            c = Course(subj.text, crse.text, sec.text, course.semester_id, crn.text)
             if course == c:
                 return tr
         return None
@@ -322,8 +324,8 @@ class CourseWatcher:
         '''
         td_list = tr_row.find_all('td')
         select = td_list[ScheduleMacroContainer.coln_index_dict['Select']]
-        cap = int(td_list[ScheduleMacroContainer.coln_index_dict['Cap']])
-        rem = int(td_list[ScheduleMacroContainer.coln_index_dict['Rem']])
+        cap = int(td_list[ScheduleMacroContainer.coln_index_dict['Cap']].text)
+        rem = int(td_list[ScheduleMacroContainer.coln_index_dict['Rem']].text)
 
         checkbox = select.find('input', {'type': 'checkbox'})
 
@@ -493,6 +495,10 @@ def main():
 
     course = Course(c_name, c_num, c_sec, term, crn)
 
+    # start watching the course
+    course_watcher = CourseWatcher()
+    course_watcher.placeWatchOn([course])
+    course_watcher.startWatch(course, auto_register=False)
     # registering the course
     #CourseRegister.register(course)
 
