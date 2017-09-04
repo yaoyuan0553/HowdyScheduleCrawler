@@ -332,10 +332,12 @@ class CourseWatcher:
         return checkbox is not None and rem > 0
 
 
-    def startWatch(self, course, time_interval=10, auto_register=True):
+    def startWatch(self, course, sec_lower=10*60, sec_upper=20*60, auto_register=True):
         '''
-        @time_interval: int
-            time in minutes to wait in between each refresh
+        @sec_lower: int
+            lower bound time in sec to wait between each refresh
+        @sec_upper: int
+            upper bound time in sec to wait between each refresh
         @auto_register: bool
             automatically register if course is open when value is True.
             Default to False 
@@ -359,6 +361,9 @@ class CourseWatcher:
             if self.validate_availability(tr_row) is True:
                 self.courseList[course][1].status = StatusCode.open
                 self.notify(str(course))
+            else:
+                print "Course not available. Info: \n{}".format(tabulate_html_table(table))
+
             if self.courseList[course][1].status == StatusCode.open or self.force_register is True:
                 if auto_register is True:   # attemp to register automatically
                     print '\nRegistering...'
@@ -379,7 +384,9 @@ class CourseWatcher:
                         else:
                             self.courseList[course][1].status = StatusCode.registered
 
-            time.sleep(time_interval)   # wait in between trials
+            wait_time = random.randint(sec_lower, sec_upper)
+            print "Retry in %.2f minutes" % (wait_time / 60.0)
+            time.sleep(wait_time)
         print "Registration of %s successful!" % (course)
                         
 def is_number(s):
@@ -498,7 +505,7 @@ def main():
     # start watching the course
     course_watcher = CourseWatcher()
     course_watcher.placeWatchOn([course])
-    course_watcher.startWatch(course, auto_register=False)
+    course_watcher.startWatch(course, sec_lower, sec_upper)
     # registering the course
     #CourseRegister.register(course)
 
