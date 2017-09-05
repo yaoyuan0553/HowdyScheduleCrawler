@@ -13,7 +13,7 @@ class SharedStuff(object):
 
 def thread1(shared):
     logging.debug('Started')
-    for i in range(5):
+    for i in range(10005):
         shared.num += 1
     logging.debug('Ended')
 
