@@ -437,6 +437,9 @@ def selectTerm():
         break
     return selected_term
 
+def displayMenu():
+    print "Howdy Course Register Menu"
+
 def main():
     displayInfo()
 
@@ -456,7 +459,7 @@ def main():
     term = selectTerm()
 
     # obtain course info 
-    print "Please provide with correct info of the course. (Term is default to Spring 2017)"
+    print "Please provide with correct info of the course."
     is_correct = False
     while (is_correct is False):
         c_name = raw_input('Subject Name (i.e. CSCE): ')
