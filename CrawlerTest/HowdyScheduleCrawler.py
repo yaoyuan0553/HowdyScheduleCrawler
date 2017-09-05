@@ -505,22 +505,8 @@ def main():
     # start watching the course
     course_watcher = CourseWatcher()
     course_watcher.placeWatchOn([course])
+    # course watcher automatically registers the course if available
     course_watcher.startWatch(course, sec_lower, sec_upper)
-    # registering the course
-    #CourseRegister.register(course)
-
-    #is_registered = False
-    #while (is_registered is False):
-    #    is_registered = CourseRegister.register(course)
-    #    wait_time = random.randint(sec_lower, sec_upper)
-    #    if (is_registered == False):
-    #        print "Retry in %d seconds" % (wait_time)
-    #        time.sleep(wait_time)
-
-    #print "\n\n******** Registration successful! *********"
-
-    #os.system('pause')
-
 
 
 def test():
