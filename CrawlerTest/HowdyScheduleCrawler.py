@@ -14,6 +14,7 @@ from enum import Enum
 
 from ManagerHeader import *
 from ManagerHeader import url_manager as urls
+from EmailReminder import emailReminder
 
 #class ConnectionError(Exception):
 #    def __init__(self, message='', error_code=''):
@@ -279,6 +280,8 @@ class CourseWatcher:
         notify user that there is an open section
         @course_name: str
         '''
+        emailReminder.sendEmail()
+
         print '%s is available' % (course_name)
 
     @staticmethod
@@ -422,7 +425,8 @@ def selectTerm():
     print "Available terms are:"
 
     term_options = []
-    for i, option in enumerate(howdy_connector.term_page_soup.find('select', {'id': 'term_input_id'}).findChildren()):
+    #for i, option in enumerate(howdy_connector.term_page_soup.find('select', {'id': 'term_input_id'}).findChildren()):
+    for i, option in enumerate(howdy_connector.term_page_soup.find('select').findChildren()):
         if "(View only)" not in option.text:
             print "{}. {}".format(i, option.text)
             term_options.append(option)
@@ -490,8 +494,8 @@ def main():
         if (time_lower >= time_upper):
             print "Lower bound must not be greater than or equal to upper bound!\n"
             continue
-        if (time_lower < 10):
-            print "Lower bound must be greater than or equal to 10 minutes!\n"
+        if (time_lower < 1):
+            print "Lower bound must be greater than or equal to 1 minutes!\n"
             continue
         break
         
